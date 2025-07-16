@@ -120,6 +120,12 @@ spec:
           # Set the path to your kubelet config file
           $configFile = "$env:SYSTEMDRIVE/var/lib/kubelet/config.yaml"
           $content = Get-Content -Path $configFile
+          $FileContent = Get-Content -Path "$env:SYSTEMDRIVE/var/lib/kubelet/kubeadm-flags.env"
+          $kubeAdmArgs = $FileContent.TrimStart('KUBELET_KUBEADM_ARGS=').Trim('"')
+
+          # Set the path to your kubelet config file
+          $configFile = "$env:SYSTEMDRIVE/var/lib/kubelet/config.yaml"
+          $content = Get-Content -Path $configFile
           # Check if NodeLogQuery feature gate was specified for the cluster and if so, also enable it via kubelet config
           if ($kubeAdmArgs.Contains("NodeLogQuery=true")) {
               $content += "enableSystemLogQuery: true"
@@ -385,6 +391,9 @@ metadata:
 spec:
   template:
     spec:
+      additionalTags:
+        AzSecPackAutoConfigReady: "true"
+        azsecpack: nonprod
       dataDisks:
       - diskSizeGB: 256
         lun: 0
