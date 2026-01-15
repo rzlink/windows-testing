@@ -318,7 +318,7 @@ spec:
         - --leader-elect
         command:
         - /manager
-        image: sigwindowstools/hyperv-runtimeclass-mutating-webhook:latest
+        image: docker.io/rzlink/hyperv-runtimeclass-mutating-webhook:v0.0.1-fix3
         livenessProbe:
           httpGet:
             path: /healthz

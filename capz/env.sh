@@ -4,7 +4,7 @@ export WINDOWS_WORKER_MACHINE_COUNT="2"
 export WINDOWS_SERVER_VERSION="windows-2022"
 export WINDOWS_CONTAINERD_URL="https://github.com/containerd/containerd/releases/download/v1.7.16/containerd-1.7.16-windows-amd64.tar.gz"
 export GMSA=""
-export HYPERV="true"
+export HYPERV="false"
 export KPNG=""
 export CALICO_VERSION="v3.31.0"
 export TEMPLATE="windows-ci.yaml"
@@ -14,7 +14,8 @@ export TOOLS_BIN_DIR="${SCRIPT_ROOT}/tools/bin"
 
 # other config
 export ARTIFACTS="${PWD}/_artifacts"
-export CLUSTER_NAME="${CLUSTER_NAME:-davwei-capz-hyperv-$(date +%Y%m%d%H%M)}"
+export CLUSTER_NAME_PREFIX="${CLUSTER_NAME_PREFIX:-davwei}"
+export CLUSTER_NAME="${CLUSTER_NAME_PREFIX}-capz-$([[ "${HYPERV}" == "true" ]] && echo "hyperv-")$(date +%Y%m%d%H%M)"
 export IMAGE_SKU="${WINDOWS_SERVER_VERSION:=windows-2022}-containerd-gen1"
 
 export AZURE_SUBSCRIPTION_ID="1c8c4edc-b188-4199-9580-3173033d75f7"

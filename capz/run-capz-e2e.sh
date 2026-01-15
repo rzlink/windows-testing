@@ -120,7 +120,9 @@ create_gmsa_domain(){
 run_capz_e2e_cleanup() {
     log "cleaning up"
 
-    capz::ci-build-azure-ccm::cleanup || true
+    if type capz::ci-build-azure-ccm::cleanup &>/dev/null; then
+        capz::ci-build-azure-ccm::cleanup || true
+    fi
 
     if [[ "$(capz::util::should_build_kubernetes)" == "true" ]]; then
         capz::ci-build-kubernetes::cleanup || true
@@ -372,7 +374,7 @@ ensure_cloud_provider_taint_on_windows_nodes() {
 apply_workload_configuration(){
     log "entering apply_workload_configuration"
     log "wait for cluster to stabilize"
-    timeout --foreground 300 bash -c "until kubectl get --raw /version --request-timeout 5s > /dev/null 2>&1; do sleep 3; done"
+    timeout --foreground 1200 bash -c "until kubectl get --raw /version --request-timeout 5s > /dev/null 2>&1; do sleep 3; done"
 
     log "installing calico"
     "$TOOLS_BIN_DIR"/helm repo add projectcalico https://docs.tigera.io/calico/charts
@@ -382,7 +384,7 @@ apply_workload_configuration(){
         sleep 30s
     fi
     "$TOOLS_BIN_DIR"/helm upgrade calico projectcalico/tigera-operator --version "$CALICO_VERSION" --namespace tigera-operator -f "$SCRIPT_ROOT"/templates/calico/values.yaml  --create-namespace  --install --debug
-    timeout --foreground 300 bash -c "until kubectl get ipamconfigs default -n default > /dev/null 2>&1; do sleep 3; done"
+    timeout --foreground 600 bash -c "until kubectl get ipamconfigs default -n default > /dev/null 2>&1; do sleep 3; done"
 
     #required for windows no way to do it via operator https://github.com/tigera/operator/issues/3113
     kubectl patch ipamconfigs default --type merge --patch='{"spec": {"strictAffinity": true}}'
