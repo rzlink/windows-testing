@@ -68,7 +68,7 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
-		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
+		WebhookServer:          webhook.NewServer(webhook.Options{Port: 8443}),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "ad4f0eab.windows.k8s.io",
@@ -90,7 +90,7 @@ func main() {
 	}
 
 	decoder := admission.NewDecoder(scheme)
-	mgr.GetWebhookServer().Register("/mutate-v1-pod", &webhook.Admission{Handler: &podUpdater{Client: mgr.GetClient(), decoder: decoder}})
+	mgr.GetWebhookServer().Register("/mutate", &webhook.Admission{Handler: &podUpdater{Client: mgr.GetClient(), decoder: decoder}})
 
 	//+kubebuilder:scaffold:builder
 

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -28,11 +29,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// +kubebuilder:webhook:path=/mutate-v1-pod,mutating=true,failurePolicy=fail,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod.kb.io,admissionReviewVersions={v1},sideEffects=None
+// +kubebuilder:webhook:path=/mutate,mutating=true,failurePolicy=fail,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod.kb.io,admissionReviewVersions={v1},sideEffects=None
 
 var (
 	webhookLogger    = ctrl.Log.WithName("webhook")
-	runtimeClassName = "runhcs-wcow-hypervisor"
+	runtimeClassName = getRuntimeClassName()
 )
 
 type podUpdater struct {
@@ -115,4 +116,11 @@ func isHostProcessPod(p *corev1.Pod) bool {
 	}
 
 	return false
+}
+
+func getRuntimeClassName() string {
+	if v := os.Getenv("RUNTIME_CLASS_NAME"); v != "" {
+		return v
+	}
+	return "runhcs-wcow-hypervisor"
 }

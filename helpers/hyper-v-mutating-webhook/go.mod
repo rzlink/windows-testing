@@ -1,8 +1,6 @@
 module windows.k8s.io/hyperv-webhook
 
-go 1.22.0
-
-toolchain go1.22.5
+go 1.24.0
 
 require (
 	k8s.io/api v0.31.0

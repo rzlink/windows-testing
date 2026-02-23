@@ -14,6 +14,35 @@ deployment:
     # Override with: --set deployment.image.registry=myregistry.io/myorg
     tag: ""  # Uses chart appVersion by default, override with --set deployment.image.tag=$VERSION
 
+  # controller-runtime manages TLS and flags internally, no args needed
+  args: []
+
+  # controller-runtime default cert directory
+  certMountPath: /tmp/k8s-webhook-server/serving-certs
+
+  # controller-runtime serves health checks on a separate HTTP port
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: 8081
+      scheme: HTTP
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /readyz
+      port: 8081
+      scheme: HTTP
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+
 webhookConfiguration:
   objectSelector:
     matchLabels:
