@@ -68,7 +68,9 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
-		WebhookServer:          webhook.NewServer(webhook.Options{Port: 8443}),
+		// TODO: Change port to 8443 to match Helm chart default once the new
+		// sigwindowstools/hyperv-webhook image is built and pushed to the registry.
+		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "ad4f0eab.windows.k8s.io",
@@ -90,7 +92,9 @@ func main() {
 	}
 
 	decoder := admission.NewDecoder(scheme)
-	mgr.GetWebhookServer().Register("/mutate", &webhook.Admission{Handler: &podUpdater{Client: mgr.GetClient(), decoder: decoder}})
+	// TODO: Change path to "/mutate" to match Helm chart default once the new
+	// sigwindowstools/hyperv-webhook image is built and pushed to the registry.
+	mgr.GetWebhookServer().Register("/mutate-v1-pod", &webhook.Admission{Handler: &podUpdater{Client: mgr.GetClient(), decoder: decoder}})
 
 	//+kubebuilder:scaffold:builder
 
