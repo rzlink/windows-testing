@@ -477,6 +477,11 @@ apply_hpc_webhook(){
 apply_hyperv_configuration(){
     log "applying configuration for testing hyperv isolated containers"
 
+    # ensure webhook pod lands on Linux control-plane node
+    log "untainting control-plane nodes"
+    mapfile -t cp_nodes < <(kubectl get nodes | grep control-plane | awk '{print $1}')
+    kubectl taint nodes "${cp_nodes[@]}" node-role.kubernetes.io/control-plane:NoSchedule- || true
+
     log "installing hyperv webhook via helm"
     "$TOOLS_BIN_DIR"/helm install hyperv-webhook "${SCRIPT_ROOT}/../helpers/helm" \
         -f "${SCRIPT_ROOT}/../helpers/helm/values-hyperv.yaml" \
@@ -484,6 +489,9 @@ apply_hyperv_configuration(){
 
     log "wait for hyperv webhook pods to start"
     timeout 5m kubectl wait --for=condition=ready pod --all -n hyperv-webhook --timeout -1s
+
+    log "tainting control-plane nodes again"
+    kubectl taint nodes "${cp_nodes[@]}" node-role.kubernetes.io/control-plane:NoSchedule || true
 
     log "done configuring testing for hyperv isolated containers"
 }
