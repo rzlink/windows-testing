@@ -534,7 +534,7 @@ spec:
   securityContext:
     windowsOptions:
       hostProcess: true
-      runAsUserName: "NT AUTHORITY\\SYSTEM"
+      runAsUserName: 'NT AUTHORITY\\SYSTEM'
   restartPolicy: Never
   containers:
   - name: patch
