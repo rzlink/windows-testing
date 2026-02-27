@@ -474,8 +474,109 @@ apply_hpc_webhook(){
     log "done configuring HPC webhook"
 }
 
+patch_containerd_for_hyperv(){
+    # Workaround for a containerd/hcsshim interaction bug that causes Hyper-V
+    # isolated containers to fail with "invalid runtime sandbox platform".
+    #
+    # Root cause:
+    #   containerd's config_windows.go sets SandboxIsolation=1 (Hyper-V) for the
+    #   runhcs-wcow-hypervisor runtime handler but omits SandboxPlatform, leaving
+    #   it as an empty string. When hcsshim receives these options, the Options
+    #   proto is non-empty (SandboxIsolation is set), so hcsshim enters the strict
+    #   validation path added in hcsshim PR #2473 (merged 2025-07-10):
+    #
+    #     emptyShimOpts := req.Options == nil || proto.Equal(shimOpts, &Options{})
+    #     if !emptyShimOpts {
+    #         plat, err := platforms.Parse(shimOpts.GetSandboxPlatform()) // fails on ""
+    #     }
+    #
+    #   If Options were truly empty (nil or all-zero), hcsshim would skip validation
+    #   and correctly infer the platform from the OCI spec (spec.Windows != nil with
+    #   HyperV set → WCOW). But because SandboxIsolation=1 makes the Options
+    #   non-empty, the empty SandboxPlatform triggers the validation error.
+    #
+    # Affected versions:
+    #   hcsshim >= v0.14.0-rc.1 (includes PR #2473), bundled in containerd >= 2.2.1.
+    #   Our CI uses WINDOWS_CONTAINERD_URL="latest" which auto-resolved to 2.2.1
+    #   after its release on 2025-12-18, silently introducing this failure.
+    #
+    # Fix:
+    #   Deploy a drop-in config (conf.d/hyperv-runtime.toml) on each Windows node
+    #   that explicitly sets SandboxPlatform = "windows/amd64" alongside
+    #   SandboxIsolation = 1, then restart containerd.
+    #
+    # Upstream references:
+    #   - hcsshim validation: https://github.com/microsoft/hcsshim/pull/2473
+    #   - containerd missing default: https://github.com/containerd/containerd/blob/main/internal/cri/config/config_windows.go
+    #   - containerd's own CI workaround: https://github.com/containerd/containerd/blob/main/.github/workflows/windows-hyperv-periodic.yml
+    log "patching containerd config on Windows nodes for hyperv support"
+
+    local win_nodes
+    mapfile -t win_nodes < <(kubectl get nodes -l kubernetes.io/os=windows -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
+    if [[ ${#win_nodes[@]} -eq 0 ]]; then
+        log "WARNING: no Windows nodes found, skipping containerd patch"
+        return
+    fi
+
+    for node in "${win_nodes[@]}"; do
+        log "patching containerd on node ${node}"
+        cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: patch-containerd-${node}
+  namespace: default
+spec:
+  nodeSelector:
+    kubernetes.io/os: windows
+  nodeName: ${node}
+  hostNetwork: true
+  securityContext:
+    windowsOptions:
+      hostProcess: true
+      runAsUserName: "NT AUTHORITY\\SYSTEM"
+  restartPolicy: Never
+  containers:
+  - name: patch
+    image: mcr.microsoft.com/windows/nanoserver:ltsc2022
+    command:
+    - powershell.exe
+    - -Command
+    - |
+      \$confDir = "\$env:ProgramFiles\\containerd\\conf.d"
+      if (-not (Test-Path \$confDir)) { New-Item -ItemType Directory -Path \$confDir -Force }
+      \$lines = @(
+        "[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runhcs-wcow-hypervisor.options]"
+        "  SandboxPlatform = 'windows/amd64'"
+        "  SandboxIsolation = 1"
+      )
+      \$lines | Set-Content -Path "\$confDir\\hyperv-runtime.toml" -Force
+      Restart-Service containerd -Force
+      Write-Host "containerd patched and restarted"
+EOF
+    done
+
+    log "waiting for containerd patch pods to complete"
+    for node in "${win_nodes[@]}"; do
+        timeout 3m kubectl wait --for=condition=Ready "pod/patch-containerd-${node}" -n default --timeout=-1s || true
+        kubectl wait --for=jsonpath='{.status.phase}'=Succeeded "pod/patch-containerd-${node}" -n default --timeout=3m
+    done
+
+    log "cleaning up containerd patch pods"
+    for node in "${win_nodes[@]}"; do
+        kubectl delete pod "patch-containerd-${node}" -n default --ignore-not-found
+    done
+
+    # give containerd a moment to stabilize after restart
+    sleep 10
+    log "containerd patching complete"
+}
+
 apply_hyperv_configuration(){
     log "applying configuration for testing hyperv isolated containers"
+
+    # patch containerd config on Windows nodes before installing webhook
+    patch_containerd_for_hyperv
 
     # ensure webhook pod lands on Linux control-plane node
     log "untainting control-plane nodes"
