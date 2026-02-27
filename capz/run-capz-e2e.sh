@@ -30,6 +30,14 @@ main() {
     export WINDOWS_CONTAINERD_URL="${WINDOWS_CONTAINERD_URL:-"https://github.com/containerd/containerd/releases/download/v1.7.16/containerd-1.7.16-windows-amd64.tar.gz"}"
     export GMSA="${GMSA:-""}" 
     export HYPERV="${HYPERV:-""}"
+
+    # Pin containerd to v2.1.6 for Hyper-V testing to avoid hcsshim SandboxPlatform
+    # validation bug in containerd >= 2.2.1 (hcsshim >= v0.14.0-rc.1).
+    # See: https://github.com/microsoft/hcsshim/pull/2473
+    if [[ "${HYPERV}" == "true" && ("${WINDOWS_CONTAINERD_URL}" == "latest" || -z "${WINDOWS_CONTAINERD_URL}") ]]; then
+        export WINDOWS_CONTAINERD_URL="https://github.com/containerd/containerd/releases/download/v2.1.6/containerd-2.1.6-windows-amd64.tar.gz"
+        log "HYPERV=true: pinning containerd to v2.1.6 to avoid SandboxPlatform bug"
+    fi
     export KPNG="${WINDOWS_KPNG:-""}"
     export CALICO_VERSION="${CALICO_VERSION:-"v3.31.0"}"
     export TEMPLATE="${TEMPLATE:-"windows-ci.yaml"}"
@@ -575,8 +583,9 @@ EOF
 apply_hyperv_configuration(){
     log "applying configuration for testing hyperv isolated containers"
 
-    # patch containerd config on Windows nodes before installing webhook
-    patch_containerd_for_hyperv
+    # Not needed when pinned to containerd 2.1.x (hcsshim v0.13.0 has no
+    # SandboxPlatform validation). Re-enable if using containerd >= 2.2.1.
+    # patch_containerd_for_hyperv
 
     # ensure webhook pod lands on Linux control-plane node
     log "untainting control-plane nodes"
