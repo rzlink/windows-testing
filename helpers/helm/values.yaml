@@ -148,6 +148,17 @@ webhookConfiguration:
           - calico-system
           - tigera-operator
           # The webhook's own namespace is automatically added via template
+      # Skip the e2e suite's img-puller namespace. It is created at suite
+      # startup (test/e2e/e2e.go prepullImages) to prewarm Windows images
+      # via DaemonSets and has no isolation requirement; injecting Hyper-V
+      # RuntimeClass turns each puller pod into a UVM with ~512Mi overhead
+      # for the suite's lifetime (~6h). Matches the framework label set by
+      # CreateTestingNS; the namespace name carries a random suffix and
+      # cannot be matched exactly.
+      - key: e2e-framework
+        operator: NotIn
+        values:
+          - img-puller
   
   # Object selector - which objects to apply webhook to
   objectSelector:
