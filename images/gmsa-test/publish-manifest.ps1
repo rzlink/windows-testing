@@ -65,10 +65,12 @@ foreach ($entry in $windowsBuilds.GetEnumerator()) {
             "'$osVersion'; expected 'windows/amd64' and Windows build '$($entry.Value)'."
     }
 
-    $sources += $source
+    $verifiedSource = "$repository@$($descriptor.digest)"
+    $sources += $verifiedSource
     $sourceDescriptors[$entry.Key] = @{
         Digest = $descriptor.digest
         OSVersion = $osVersion
+        Reference = $verifiedSource
     }
 }
 
@@ -79,7 +81,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 foreach ($entry in $windowsBuilds.GetEnumerator()) {
-    $source = "${repository}:$Version-windows-amd64-$($entry.Key)"
+    $source = $sourceDescriptors[$entry.Key].Reference
     $osVersion = $sourceDescriptors[$entry.Key].OSVersion
     & docker manifest annotate --os windows --arch amd64 --os-version $osVersion $target $source
     if ($LASTEXITCODE -ne 0) {

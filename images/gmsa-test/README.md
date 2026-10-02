@@ -64,9 +64,10 @@ staging manifest:
 ```
 
 The script verifies each source image's platform and exact Windows version,
-annotates the combined manifest, pushes it as `gmsa-test:1.0.0`, and verifies
-the published descriptors. Promotion configuration must be added separately
-before that staging manifest can be promoted to
+pins every source by digest before assembling the manifest, pushes it as
+`gmsa-test:1.0.0`, and verifies the published descriptors. Promotion
+configuration must be added separately before that staging manifest can be
+promoted to
 `registry.k8s.io/e2e-test-images/gmsa-test:1.0.0`.
 
 ## Servicing behavior
