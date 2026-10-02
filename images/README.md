@@ -1,6 +1,12 @@
 # Windows Test Images
 
-Test images in this directory are no longer maintained. https://github.com/kubernetes/kubernetes/tree/master/test/images contains the most up-to-date test images.
+Most historical test images in this directory are no longer maintained.
+https://github.com/kubernetes/kubernetes/tree/master/test/images contains the
+most up-to-date general-purpose test images.
+
+The [`gmsa-test`](gmsa-test) image is maintained here because its LTSC 2025
+variant requires Windows container servicing that cannot run in the
+Linux-hosted Kubernetes test-image build pipeline.
 
 ## Image Repository List
 
